@@ -6,6 +6,7 @@ import re
 from urllib import parse
 
 import pandas as pd
+import plotly.express as px
 import xlwt
 from Bio import Entrez, Medline
 
@@ -139,6 +140,30 @@ def get_search_list(category_key):
     use_codeword = (category_key == 'v')
     return search_list, use_codeword
 
+def generate_plot(df, filename):
+    """Generates a bar plot from the DataFrame and saves it as an HTML file."""
+    if 'Codewort' not in df.columns or df['Codewort'].empty:
+        print("No data available for plotting.")
+        return
+
+    # Group by 'Codewort' and count the occurrences
+    codeword_counts = df['Codewort'].value_counts().reset_index()
+    codeword_counts.columns = ['Codewort', 'Anzahl']
+
+    # Create the plot
+    fig = px.bar(codeword_counts, x='Codewort', y='Anzahl',
+                 title='Anzahl der Studien pro Codewort',
+                 labels={'Codewort': 'Codewort', 'Anzahl': 'Anzahl der Studien'})
+
+    # Save the plot
+    plot_filename = filename.rsplit('.', 1)[0] + '.html'
+    try:
+        fig.write_html(plot_filename)
+        print(f"Plot saved to '{plot_filename}'")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+        autolog(f"Plot save error: {e}")
+
 def save_results(df, filename, file_format):
     """Saves the DataFrame to the specified file format."""
     print(f"Saving results to '{filename}' in {file_format} format...")
@@ -164,6 +189,8 @@ def main():
                         help="suche gegen implementierte Datensätze \n c=Cross-Reactivity b=Blutwerte p=Pharma k=Krankheiten v=VITAMINE m=MINERALIEN a=AMINOSÄUREN g=Genetik h=Herb/Pflanzen l=Gute Bakterien e=Enzyme")
     parser.add_argument('--format', default='xls', choices=['xls', 'csv', 'json', 'html'],
                         help="Output format for the results.")
+    parser.add_argument('--plot', action='store_true',
+                        help="Generate a plot of the results.")
     args = parser.parse_args()
 
     setup_logging()
@@ -184,6 +211,9 @@ def main():
     filename = f"{base_filename}.{args.format}"
 
     save_results(df, filename, args.format)
+
+    if args.plot:
+        generate_plot(df, filename)
 
 if __name__ == '__main__':
     main()
